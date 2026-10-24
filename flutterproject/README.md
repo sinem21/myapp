@@ -1,17 +1,18 @@
-# flutterproject
+# Ollama Chat
 
-A new Flutter project.
+Android emülatöründe çalışan yerel Ollama modelleri için Flutter sohbet uygulaması.
 
-## Getting Started
+## Çalıştırma
 
-This project is a starting point for a Flutter application.
+1. Bilgisayarınızda Ollama'yı başlatın ve en az bir model indirin (ör. `ollama pull qwen3:8b`).
+2. Android emülatöründen `http://10.0.2.2:11434` adresine erişilebildiğini doğrulayın.
+3. Proje dizininde `flutter pub get` ve ardından `flutter run` komutlarını çalıştırın.
 
-A few resources to get you started if this is your first Flutter project:
+Uygulama `/api/tags` ile mevcut modelleri listeler ve `/api/chat` üzerinden
+`stream: true` kullanarak yanıtları anlık gösterir. Model hem `message.thinking`
+alanı hem de yanıttaki `<think>...</think>` etiketleriyle düşünme içeriği
+gönderiyorsa, arayüzde bu içerik ayrı açılır bir bölümde görüntülenir.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Ollama sunucusu ve modelin kullandığı düşünme biçimi modele göre değişebilir.
+Sunucu erişilemiyorsa uygulamadaki yenileme düğmesini kullanın; model adı
+bağlantı olmadan da üst çubuktan elle girilebilir.
