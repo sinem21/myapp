@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../models/chat_message.dart';
+import '../services/chat_history_service.dart';
 import '../services/ollama_service.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key, required this.service});
+  const ChatScreen({super.key, required this.service, this.historyService});
 
   final OllamaApi service;
+  final ChatHistoryApi? historyService;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -22,13 +24,16 @@ class _ChatScreenState extends State<ChatScreen> {
   List<String> _models = [];
   String _selectedModel = 'llama3.2';
   String? _connectionError;
+  String? _historyError;
   bool _isLoadingModels = true;
+  bool _isLoadingHistory = false;
   bool _isGenerating = false;
 
   @override
   void initState() {
     super.initState();
     _loadModels();
+    _loadHistory();
   }
 
   @override
@@ -36,6 +41,9 @@ class _ChatScreenState extends State<ChatScreen> {
     _inputController.dispose();
     _inputFocus.dispose();
     _scrollController.dispose();
+    if (widget.historyService case final ChatHistoryService service) {
+      service.dispose();
+    }
     if (widget.service case final OllamaService service) {
       service.dispose();
     }
@@ -69,6 +77,41 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _loadHistory() async {
+    final historyService = widget.historyService;
+    if (historyService == null) return;
+    setState(() => _isLoadingHistory = true);
+    try {
+      final messages = await historyService.load();
+      if (!mounted) return;
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(messages);
+        _historyError = null;
+        _isLoadingHistory = false;
+      });
+      _scrollToBottom();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _historyError = _historyErrorMessage(error);
+        _isLoadingHistory = false;
+      });
+    }
+  }
+
+  Future<void> _saveHistory() async {
+    final historyService = widget.historyService;
+    if (historyService == null) return;
+    try {
+      await historyService.save(List<ChatMessage>.unmodifiable(_messages));
+      if (mounted) setState(() => _historyError = null);
+    } catch (error) {
+      if (mounted) setState(() => _historyError = _historyErrorMessage(error));
+    }
+  }
+
   Future<void> _sendMessage([String? suggestedPrompt]) async {
     final prompt = (suggestedPrompt ?? _inputController.text).trim();
     if (prompt.isEmpty || _isGenerating) return;
@@ -85,6 +128,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ..add(const ChatMessage(role: MessageRole.assistant));
     });
     _scrollToBottom();
+    await _saveHistory();
 
     try {
       await for (final delta in widget.service.chat(
@@ -101,6 +145,7 @@ class _ChatScreenState extends State<ChatScreen> {
         });
         _scrollToBottom();
       }
+      await _saveHistory();
     } catch (error) {
       if (!mounted) return;
       final current = _messages.last;
@@ -111,10 +156,14 @@ class _ChatScreenState extends State<ChatScreen> {
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);
+        await _saveHistory();
         _scrollToBottom();
       }
     }
   }
+
+  String _historyErrorMessage(Object error) =>
+      'Sohbet geçmişi sunucusuna ulaşılamadı. (${error is ChatHistoryException ? error.message : error})';
 
   String _friendlyError(Object error) {
     final detail = error is OllamaException
@@ -223,6 +272,18 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           _buildConnectionStatus(),
+          if (_historyError != null)
+            MaterialBanner(
+              content: Text(_historyError!),
+              leading: const Icon(Icons.cloud_off_outlined),
+              actions: [
+                TextButton(
+                  onPressed: _loadHistory,
+                  child: const Text('Yenile'),
+                ),
+              ],
+            ),
+          if (_isLoadingHistory) const LinearProgressIndicator(minHeight: 2),
           Expanded(
             child: _messages.isEmpty
                 ? _buildWelcome()

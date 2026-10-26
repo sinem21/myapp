@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/chat_screen.dart';
+import 'services/chat_history_service.dart';
 import 'services/ollama_service.dart';
 
 void main() {
@@ -26,7 +27,10 @@ class OllamaChatApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Roboto',
       ),
-      home: ChatScreen(service: OllamaService()),
+      home: ChatScreen(
+        service: OllamaService(),
+        historyService: ChatHistoryService(),
+      ),
     );
   }
 }
